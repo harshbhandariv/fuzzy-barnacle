@@ -7,7 +7,7 @@
 // /api/auth/logout - rewrite
 
 //Todo - revoking tokens
-import express, { Request, Response } from "express";
+import express, { NextFunction, Request, Response } from "express";
 import "./config/passport";
 import passport from "passport";
 import cookieparser from "cookie-parser";
@@ -39,7 +39,7 @@ app.get(
   setRefreshToken
 );
 
-app.get("/api/refresh_token", async (req, res) => {
+app.get("/api/auth/refresh_token", async (req, res) => {
   if (!req.cookies.refreshToken)
     return res.status(401).send({ error: "No cookie present" });
   try {
@@ -48,15 +48,15 @@ app.get("/api/refresh_token", async (req, res) => {
       process.env.RefreshToken as string
     );
     const user = await User.findById(sub);
-    console.log(user, "place 1");
+    // console.log(user, "place 1");
     const tokens = [...user.localRefreshTokens];
     const index = tokens.indexOf(req.cookies.refreshToken);
-    console.log(index, "index place 1");
+    // console.log(index, "index place 1");
     if (index == -1) return res.send({ error: "Login again" });
     tokens.splice(index, 1);
     user.localRefreshTokens = tokens;
-    console.log(user, "place 2");
-    console.log(user.localRefreshTokens, "haha");
+    // console.log(user, "place 2");
+    // console.log(user.localRefreshTokens, "haha");
     const accessToken = sign({ name, sub }, process.env.AccessToken as string, {
       expiresIn: "15 minutes",
     });
@@ -69,7 +69,7 @@ app.get("/api/refresh_token", async (req, res) => {
     );
     user.localRefreshTokens.push(refreshToken);
     const result = await user.save();
-    console.log(user, "place 3");
+    // console.log(user, "place 3");
     if (!result) return res.status(500).send({ error: "Something failed" });
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
@@ -80,6 +80,44 @@ app.get("/api/refresh_token", async (req, res) => {
     res.send(error);
   }
 });
+
+app.get(
+  "/api/whoami",
+  checkAuthorizationHeader,
+  verifyBearerToken,
+  getUser,
+  (req: any, res) => {
+    res.send(req.user);
+  }
+);
+
+function checkAuthorizationHeader(req: any, res: Response, next: NextFunction) {
+  const authorization = req.get("Authorization");
+  // console.log(authorization, 1233223);
+  if (!authorization) return res.status(401).send({ error: "No token sent" });
+  const bearerToken = authorization.substring(7);
+  req.bearerToken = bearerToken;
+  next();
+}
+
+function verifyBearerToken(req: any, res: Response, next: NextFunction) {
+  const token = req.bearerToken;
+  try {
+    const { name, sub }: any = verify(token, process.env.AccessToken as string);
+    req.sub = sub;
+    next();
+  } catch (error) {
+    return res.send({ error: "Token authentication failed" });
+  }
+}
+
+async function getUser(req: any, res: Response, next: NextFunction) {
+  const id = req.sub;
+  const user = await User.findById(id);
+  if (!user) return res.send({ error: "No user exists" });
+  req.user = user;
+  next();
+}
 
 app.get("/api/auth/logout", async (req, res) => {
   const refreshToken = req.cookies.refreshToken;
@@ -139,7 +177,7 @@ async function setRefreshToken(req: Request, res: Response) {
       localRefreshTokens: refreshToken,
     },
   });
-  console.log(result);
+  // console.log(result);
   if (!result) return res.status(500).send({ error: "Login failed" });
   res.cookie("refreshToken", refreshToken, {
     httpOnly: true,
