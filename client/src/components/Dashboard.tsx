@@ -4,7 +4,7 @@ import { useHistory } from "react-router-dom";
 import { secureFetch } from "../App";
 // import { secureFetch } from "../App";
 
-export default function Dashboard() {
+export default function Dashboard({ isLoggedIn }: any) {
   const [user, setUser] = useState({ name: "", email: "", pic: "" });
   const history = useHistory();
   useEffect(
@@ -19,6 +19,9 @@ export default function Dashboard() {
     },
     [history]
   );
+  if (!isLoggedIn) {
+    history.push("/");
+  }
   return (
     <div>
       <Typography variant="h1">Dashboard</Typography>

@@ -53,7 +53,7 @@ const App = () => {
           .catch(({ response }) => {
             setIsLoggedIn(false);
           });
-      }, 14 * 1000 * 60);
+      }, 14 * 60 * 1000);
     }
     return () => clearInterval(intervalId);
   }, [isLoggedIn]);
@@ -68,7 +68,7 @@ const App = () => {
           <Nav isLoggedIn={isLoggedIn} />
           <Switch>
             <Route path="/dashboard">
-              <Dashboard />
+              <Dashboard isLoggedIn={isLoggedIn} />
             </Route>
             <Route path="/login">
               <Login isLoggedIn={isLoggedIn} />
